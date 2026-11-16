@@ -1,6 +1,7 @@
 {
   "domain": "unifi_policy_switches",
   "name": "UniFi Policy Engine Switches",
+  "categories": ["computers_network.routers_network"],
   "codeowners": ["@palmeXx"],
   "config_flow": true,
   "dependencies": ["unifi"],

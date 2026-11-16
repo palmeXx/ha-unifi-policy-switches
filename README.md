@@ -48,7 +48,19 @@ contains details of your network, check it before sharing it.
 
 ## Installation
 
-### HACS (custom repository)
+### Marketplace (Home Assistant 2026.11 and newer)
+
+Since Home Assistant 2026.11, HACS is built in as the **Marketplace**. Until this
+integration is in the catalog, add it from its link:
+
+1. Go to **Settings** → **Marketplace**.
+2. Select **Add from link** and enter `palmeXx/ha-unifi-policy-switches`.
+   Adding a repository from a link needs a GitHub connection, Home Assistant
+   asks for it the first time.
+3. Install **UniFi Policy Engine Switches**.
+4. Restart Home Assistant when asked.
+
+### HACS (Home Assistant 2026.10)
 
 [![Open your Home Assistant instance and open this repository in HACS.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=palmeXx&repository=ha-unifi-policy-switches&category=integration)
 
@@ -60,6 +72,9 @@ Or manually in HACS:
    **Integration**.
 4. Search for **UniFi Policy Engine Switches** and download it.
 5. Restart Home Assistant.
+
+When updating to Home Assistant 2026.11, HACS content is moved to the
+Marketplace automatically.
 
 ### Manual installation
 
@@ -86,7 +101,6 @@ Or manually in HACS:
            ├── config_flow.py
            ├── const.py
            ├── manifest.json
-           ├── strings.json
            ├── switch.py
            └── translations/
    ```
@@ -138,7 +152,8 @@ follow the rule names in UniFi.
 1. Go to **Settings** → **Devices & services** → **UniFi Policy Engine Switches**.
 2. Open the menu of the entry and select **Delete**.
 3. For a manual installation, remove the `custom_components/unifi_policy_switches`
-   folder and restart Home Assistant. With HACS, remove it in HACS.
+   folder and restart Home Assistant. Otherwise remove it in the Marketplace
+   or in HACS.
 
 ## Development
 
