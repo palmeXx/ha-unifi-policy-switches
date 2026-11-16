@@ -1,0 +1,12 @@
+{
+  "domain": "unifi_policy_switches",
+  "name": "UniFi Policy Engine Switches",
+  "codeowners": ["@palmeXx"],
+  "config_flow": true,
+  "dependencies": ["unifi"],
+  "documentation": "https://github.com/palmeXx/ha-unifi-policy-switches",
+  "integration_type": "service",
+  "iot_class": "local_polling",
+  "issue_tracker": "https://github.com/palmeXx/ha-unifi-policy-switches/issues",
+  "version": "0.1.0"
+}

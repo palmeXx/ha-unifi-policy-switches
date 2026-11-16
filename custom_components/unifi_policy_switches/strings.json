@@ -1,0 +1,30 @@
+{
+  "config": {
+    "abort": {
+      "already_configured": "Switches for this UniFi Network entry are already set up.",
+      "no_unifi_entries": "There is no UniFi Network entry without Policy Engine switches. Set up the UniFi Network integration first."
+    },
+    "step": {
+      "user": {
+        "data": {
+          "unifi_entry_id": "UniFi Network entry"
+        },
+        "data_description": {
+          "unifi_entry_id": "The connection of this entry is used, no own login is needed."
+        },
+        "description": "Adds switches for all Policy Engine rules the UniFi Network integration doesn't provide itself."
+      }
+    }
+  },
+  "exceptions": {
+    "action_request_failed": {
+      "message": "Failed to change the Policy Engine rule."
+    },
+    "unifi_entry_missing": {
+      "message": "The UniFi Network entry used by this entry doesn't exist anymore."
+    },
+    "unifi_entry_not_loaded": {
+      "message": "Waiting for UniFi Network entry {title} to be loaded."
+    }
+  }
+}

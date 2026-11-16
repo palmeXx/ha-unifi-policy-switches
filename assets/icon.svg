@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <!-- Source of brand/icon.png and brand/icon@2x.png, render with:
+       inkscape assets/icon.svg -w 256 -h 256 -o custom_components/unifi_policy_switches/brand/icon.png -->
+  <defs>
+    <linearGradient id="background" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#003DA1"/>
+      <stop offset="1" stop-color="#006DFC"/>
+    </linearGradient>
+  </defs>
+  <rect width="256" height="256" rx="56" fill="url(#background)"/>
+  <g transform="translate(128 128) scale(11) translate(-10 -10)" fill="none"
+     stroke="#FFFFFF" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M10 3.5 16.5 6.75V13.25L10 16.5 3.5 13.25V6.75Z"/>
+    <path d="M3.5 6.75 10 10 16.5 6.75M10 10V16.5"/>
+  </g>
+</svg>

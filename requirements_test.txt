@@ -1,0 +1,5 @@
+# No pytest-homeassistant-custom-component release targets 2026.11.x yet.
+# 0.13.375 pins homeassistant 2026.10.4 (with aiounifi 96), the UniFi switch
+# platform and the aiounifi Policy Engine handler are the same as in 2026.11.1.
+pytest-homeassistant-custom-component==0.13.375
+aiounifi==96
