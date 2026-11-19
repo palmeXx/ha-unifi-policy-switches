@@ -155,56 +155,103 @@ follow the rule names in UniFi.
    folder and restart Home Assistant. Otherwise remove it in the Marketplace
    or in HACS.
 
-## Development
+## Contributing
 
-The tests use synthetic rule data only. There are two kinds of test runs:
+Contributions are welcome: bug reports and ideas as
+[issues](https://github.com/palmeXx/ha-unifi-policy-switches/issues), changes
+as pull requests. Every pull request to `main` is the next release, merging it
+publishes it.
 
-- **Test suite** (`make test`): the full pytest suite with
+1. For larger changes, open an issue first to agree on the approach.
+2. Fork the repository and create a branch from `main`.
+3. Make the change and add or update tests, then run them, see
+   [Development](#development):
+
+   ```shell
+   make test HA=2026.10.4
+   make smoke HA=2026.11.1
+   ```
+
+   Use the newest Home Assistant version with a test suite release for `test`,
+   and the current Home Assistant version for `smoke`, `make versions` lists them.
+
+4. Decide if the pull request is a release:
+   - **Changes of the integration** are released. Raise `version` in
+     `manifest.json` and add a `CHANGELOG.md` section for it, see
+     [Release process](#release-process). Check both with
+     `make release-check` and preview the release notes with
+     `make release-notes`.
+   - **Other changes**, like the README, the workflows or only tests, are not
+     released. Keep the version, the maintainer labels the pull request
+     `no-release`. Only users with write access can set labels, mention it in
+     the pull request.
+
+   If you're unsure, ask in the pull request.
+5. Open the pull request against `main`. The checks `Release check`,
+   `HACS validation`, `Hassfest validation`, `Test suite` and `Smoke test` have
+   to pass. The pipeline runs the same `make test` and `make smoke` as above,
+   on the newest Home Assistant version with a test suite release and on the
+   newest Home Assistant release.
+6. After the review, the maintainer merges the pull request, which creates the
+   tag and the GitHub release automatically.
+
+Use synthetic data only. Don't put real details of your network, like rule
+names, IDs, MAC or IP addresses, into tests, issues or shared logs and
+diagnostics.
+
+### Development
+
+The tests use synthetic rule data only. There are two kinds of test runs, both
+for a Home Assistant version set with `HA=`:
+
+- **Test suite** (`make test HA=<version>`): the full pytest suite with
   [pytest-homeassistant-custom-component](https://github.com/MatthewFlamm/pytest-homeassistant-custom-component)
-  (phcc). Every phcc release pins exactly one Home Assistant version, the tests
-  run on that version.
-- **Smoke test** (`make smoke`): imports the integration and checks the rule
-  filter against any Home Assistant version, without phcc. Use it for Home
-  Assistant versions without a phcc release yet.
+  (phcc). Every phcc release pins exactly one Home Assistant version. `make test`
+  looks up the phcc release of the given version first and stops if there is
+  none.
+- **Smoke test** (`make smoke HA=<version>`): imports the integration and
+  checks the rule filter, without phcc. It works with any Home Assistant
+  version, also with one that has no phcc release yet.
 
-Each version combination gets its own virtual environment in the repository
-(`.venv-test-*`, `.venv-smoke-*`). It is created on the first run and reused
-afterwards. Python 3.14 is used, set `PYTHON=` to use another interpreter.
+Both use the aiounifi version that the UniFi Network integration of that Home
+Assistant version pins, unless `AIOUNIFI=` is set.
 
 | Command | Runs |
 |---|---|
 | `make help` | Overview of the targets |
-| `make test-ha2026.10` | Test suite on Home Assistant 2026.10.4 with aiounifi 96 |
-| `make smoke-ha2026.11` | Smoke test on Home Assistant 2026.11.1 with aiounifi 98 |
-| `make test-all` | Both of the above |
-| `make test PHCC=<phcc> AIOUNIFI=<aiounifi>` | Test suite on the Home Assistant version pinned by phcc |
-| `make smoke HA=<ha> AIOUNIFI=<aiounifi>` | Smoke test on any Home Assistant version |
-| `make test PYTEST_ARGS="-k reload -v"` | Test suite with extra pytest arguments |
-| `make versions` | Home Assistant version pinned by the newest phcc releases |
-| `make versions HA=<ha>` | aiounifi version pinned by that Home Assistant version and the matching phcc release |
+| `make test HA=<ha>` | Test suite on that Home Assistant version |
+| `make smoke HA=<ha>` | Smoke test on that Home Assistant version |
+| `make test HA=<ha> AIOUNIFI=<aiounifi>` | Same, with another aiounifi version, also for `smoke` |
+| `make test HA=<ha> PYTEST_ARGS="-k reload -v"` | Test suite with extra pytest arguments |
+| `make versions` | Home Assistant version pinned by the newest phcc releases, `COUNT=<n>` for more |
+| `make versions HA=<ha>` | aiounifi version and phcc release of that Home Assistant version |
 | `make clean` | Remove the virtual environments of the targets |
 
-### Finding matching versions
+Each version combination gets its own virtual environment in the repository
+(`.venv-test-*`, `.venv-smoke-*`). The versions are looked up online when it is
+created, later runs reuse it offline. Python 3.14 is used, set `PYTHON=` to use
+another interpreter.
+
+#### Finding matching versions
 
 Home Assistant pins the aiounifi version of the UniFi Network integration in
 its manifest, phcc pins the Home Assistant version in its PyPI metadata.
-`make versions` looks both up and prints the commands to run:
+`make versions` looks both up:
 
 ```console
 $ make versions HA=2026.10.4
-Home Assistant 2026.10.4 pins aiounifi==96
+Home Assistant 2026.10.4 pins aiounifi 96
 phcc 0.13.375 pins Home Assistant 2026.10.4
-  make test PHCC=0.13.375 AIOUNIFI=96
-  make smoke HA=2026.10.4 AIOUNIFI=96
+  make test HA=2026.10.4
+  make smoke HA=2026.10.4
 
 $ make versions HA=2026.11.1
-Home Assistant 2026.11.1 pins aiounifi==98
-No phcc release pins Home Assistant 2026.11.1 (checked the 10 newest releases)
-  make smoke HA=2026.11.1 AIOUNIFI=98
+Home Assistant 2026.11.1 pins aiounifi 98
+No phcc release pins Home Assistant 2026.11.1
+  make smoke HA=2026.11.1
 ```
 
-Without `HA=` it lists the newest phcc releases, `COUNT=<n>` checks more of
-them. To look it up by hand:
+To look it up by hand:
 
 - **phcc → Home Assistant:** the `homeassistant==` requirement on
   `https://pypi.org/pypi/pytest-homeassistant-custom-component/<phcc>/json`
@@ -212,9 +259,40 @@ them. To look it up by hand:
 - **Home Assistant → aiounifi:** `requirements` in
   `homeassistant/components/unifi/manifest.json` of the Home Assistant release tag.
 
-Installing a different Home Assistant version than the one pinned by phcc
-(`make test HA=...`) is possible, but usually fails, because phcc contains test
-helpers copied from that Home Assistant version.
+### Release process
+
+Every pull request to `main` is the next release, merging it releases it.
+
+1. In the pull request, raise `version` in
+   `custom_components/unifi_policy_switches/manifest.json`, following
+   [semantic versioning](https://semver.org/). Pre-releases look like `0.2.0b1`
+   or `0.2.0-rc1`.
+2. Move the entries of `## [Unreleased]` in `CHANGELOG.md` into a new section
+   `## [<version>] - <date>`. This section is the release note.
+3. The `Release check` of the pull request fails if the version isn't greater
+   than on `main`, its tag exists already or `CHANGELOG.md` has no section for
+   it. Check it before pushing with `make release-check` and preview the notes
+   with `make release-notes`.
+4. Merge the pull request. The `Release` workflow validates and tests `main`,
+   then creates the tag and the GitHub release. Nothing else to do.
+
+Pull requests that shouldn't be released, like changes of the README or the
+workflows, get the label `no-release`. They skip the release check and their
+merge creates no release.
+
+The release notes are the `CHANGELOG.md` section, followed by the commits since
+the previous tag. Pre-releases are only offered to Marketplace users who opt in.
+
+Pushing a tag yourself still works: it has to match the manifest version, and
+the workflow creates the release for it. For a tag pushed before the workflow
+existed, or to update the notes of a release, run the `Release` workflow
+manually with the tag (Actions → Release → Run workflow). It then uses
+`CHANGELOG.md` of the branch it runs on.
+
+To enforce the check, protect `main` in the repository settings (Settings →
+Rules → Rulesets, or Branches): require a pull request before merging and the
+status checks `Release check`, `HACS validation`, `Hassfest validation`,
+`Test suite` and `Smoke test`.
 
 ## Disclaimer
 

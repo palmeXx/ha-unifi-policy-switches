@@ -1,66 +1,78 @@
 # Run the tests against different Home Assistant and aiounifi versions.
 #
-#   make test                                  defaults: PHCC=0.13.375 AIOUNIFI=96
-#   make test PHCC=0.13.375 AIOUNIFI=96        HA pinned by the given phcc release
-#   make smoke HA=2026.11.1 AIOUNIFI=98        import and filter check only
-#   make test-ha2026.10 / make smoke-ha2026.11 shortcuts for the known versions
+#   make test HA=2026.10.4                     test suite
+#   make smoke HA=2026.11.1                    import and rule filter check only
+#   make test HA=2026.10.4 AIOUNIFI=96         with another aiounifi version
 #   make versions                              HA pin of the newest phcc releases
 #   make versions HA=2026.11.1                 aiounifi pin and matching phcc
+#   make release-check                         release check of a pull request
+#   make release-notes                         preview the release notes
 #
-# pytest-homeassistant-custom-component (phcc) pins one Home Assistant version,
-# so `test` uses the HA version of the phcc release. HA= overrides it, which
-# only works if phcc still matches that HA version. For HA versions without a
-# phcc release, use `smoke`, it runs without phcc.
-# Each version combination gets its own virtual environment.
+# The test suite needs the pytest-homeassistant-custom-component (phcc) release
+# pinning that Home Assistant version, `test` looks it up and fails without one.
+# `smoke` runs without phcc, for Home Assistant versions without a release.
+# AIOUNIFI defaults to the version pinned by the UniFi integration of HA.
+# Each version combination gets its own virtual environment, the versions are
+# only looked up when it is created.
 
 PYTHON ?= python3.14
-PHCC ?= 0.13.375
-AIOUNIFI ?= 96
 HA ?=
+AIOUNIFI ?=
+PYTEST_ARGS ?=
 
-TEST_VENV = .venv-test-phcc$(PHCC)$(if $(HA),-ha$(HA))-aiounifi$(AIOUNIFI)
-SMOKE_VENV = .venv-smoke-ha$(HA)-aiounifi$(AIOUNIFI)
+VENV_SUFFIX = ha$(HA)$(if $(AIOUNIFI),-aiounifi$(AIOUNIFI))
+TEST_VENV = .venv-test-$(VENV_SUFFIX)
+SMOKE_VENV = .venv-smoke-$(VENV_SUFFIX)
+VERSIONS = $(PYTHON) -I scripts/versions.py
 
-.PHONY: help test smoke test-ha2026.10 smoke-ha2026.11 test-all versions clean
+# Shell snippet setting $aiounifi to AIOUNIFI or the pin of HA
+LOOKUP_AIOUNIFI = aiounifi="$(AIOUNIFI)"; \
+	if [ -z "$$aiounifi" ]; then aiounifi=$$($(VERSIONS) aiounifi --ha $(HA)) || exit 1; fi
+
+.PHONY: help require-ha test smoke versions release-check release-notes clean
 
 help:
-	@sed -n '2,14s/^# \{0,1\}//p' Makefile
+	@sed -n '2,16s/^# \{0,1\}//p' Makefile
 
-test: $(TEST_VENV)/.installed
+require-ha:
+	@test -n "$(HA)" || { echo "Set HA=<version>, e.g. make $(MAKECMDGOALS) HA=2026.10.4, see make versions"; exit 1; }
+
+test: require-ha $(TEST_VENV)/.installed
 	$(TEST_VENV)/bin/pytest $(PYTEST_ARGS)
 
-smoke: $(SMOKE_VENV)/.installed
+smoke: require-ha $(SMOKE_VENV)/.installed
 	$(SMOKE_VENV)/bin/python scripts/smoke_test.py
 
-# Latest phcc release, pins Home Assistant 2026.10.4 with aiounifi 96
-test-ha2026.10:
-	$(MAKE) test PHCC=0.13.375 AIOUNIFI=96 HA=
-
-# No phcc release for 2026.11 yet
-smoke-ha2026.11:
-	$(MAKE) smoke HA=2026.11.1 AIOUNIFI=98
-
-test-all: test-ha2026.10 smoke-ha2026.11
-
-# Standard library only, runs without a virtual environment
-versions:
-	$(PYTHON) -I scripts/versions.py $(if $(HA),--ha $(HA)) $(if $(COUNT),--count $(COUNT))
-
 $(TEST_VENV)/.installed:
-	$(PYTHON) -m venv $(TEST_VENV)
-	$(TEST_VENV)/bin/pip install -q -U pip
+	@phcc=$$($(VERSIONS) phcc --ha $(HA)) || exit 1; \
+	$(LOOKUP_AIOUNIFI); \
+	echo "Home Assistant $(HA), pytest-homeassistant-custom-component $$phcc, aiounifi $$aiounifi"; \
+	$(PYTHON) -m venv $(TEST_VENV) && \
+	$(TEST_VENV)/bin/pip install -q -U pip && \
 	$(TEST_VENV)/bin/pip install -q \
-		pytest-homeassistant-custom-component==$(PHCC) \
-		aiounifi==$(AIOUNIFI) \
-		$(if $(HA),homeassistant==$(HA))
+		pytest-homeassistant-custom-component==$$phcc aiounifi==$$aiounifi
 	touch $@
 
 $(SMOKE_VENV)/.installed:
-	@test -n "$(HA)" || { echo "Set HA=<version> for smoke"; exit 1; }
-	$(PYTHON) -m venv $(SMOKE_VENV)
-	$(SMOKE_VENV)/bin/pip install -q -U pip
-	$(SMOKE_VENV)/bin/pip install -q homeassistant==$(HA) aiounifi==$(AIOUNIFI)
+	@$(LOOKUP_AIOUNIFI); \
+	echo "Home Assistant $(HA), aiounifi $$aiounifi"; \
+	$(PYTHON) -m venv $(SMOKE_VENV) && \
+	$(SMOKE_VENV)/bin/pip install -q -U pip && \
+	$(SMOKE_VENV)/bin/pip install -q homeassistant==$(HA) aiounifi==$$aiounifi
 	touch $@
+
+# Standard library only, runs without a virtual environment
+versions:
+	@$(if $(HA),$(VERSIONS) show --ha $(HA),$(VERSIONS) list $(if $(COUNT),--count $(COUNT)))
+
+# Same check as on pull requests, BASE=main to compare with the local branch
+BASE ?= origin/main
+release-check:
+	$(PYTHON) -I scripts/release.py check --base $(BASE)
+
+# Notes of the working tree version, REF=<tag> for an existing release
+release-notes:
+	$(PYTHON) -I scripts/release.py notes $(if $(REF),--ref $(REF))
 
 clean:
 	rm -rf .venv-test-* .venv-smoke-* .pytest_cache
