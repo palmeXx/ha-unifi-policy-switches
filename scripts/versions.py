@@ -5,6 +5,8 @@
   versions.py phcc --ha 2026.10.4   print the phcc release pinning that version
   versions.py aiounifi --ha 2026.10.4
                                     print the aiounifi version it pins
+  versions.py newest-ha             print the newest Home Assistant release
+  versions.py newest-test-ha        print the newest version with a phcc release
 
 pytest-homeassistant-custom-component (phcc) pins one Home Assistant version per
 release in its PyPI metadata, the UniFi integration pins aiounifi in its manifest.
@@ -19,6 +21,7 @@ import sys
 from urllib.error import HTTPError
 from urllib.request import urlopen
 
+HA_URL = "https://pypi.org/pypi/homeassistant/json"
 PHCC_URL = "https://pypi.org/pypi/pytest-homeassistant-custom-component/json"
 PHCC_VERSION_URL = (
     "https://pypi.org/pypi/pytest-homeassistant-custom-component/{version}/json"
@@ -68,6 +71,11 @@ def find_phcc(ha: str) -> str | None:
     return None
 
 
+def newest_test_ha() -> str | None:
+    """Return the newest Home Assistant version with a phcc release."""
+    return next((ha for _, ha in phcc_releases() if ha is not None), None)
+
+
 def aiounifi_pin(ha: str) -> str | None:
     """Return the aiounifi version pinned by a Home Assistant version."""
     try:
@@ -92,7 +100,21 @@ def main() -> int:
     list_parser.add_argument("--count", type=int, default=10)
     for command in ("show", "phcc", "aiounifi"):
         commands.add_parser(command).add_argument("--ha", required=True)
+    commands.add_parser("newest-ha", help="newest Home Assistant release")
+    commands.add_parser("newest-test-ha", help="newest version with phcc release")
     args = parser.parse_args()
+
+    if args.command == "newest-ha":
+        # PyPI reports the newest release without pre-releases
+        print(get_json(HA_URL)["info"]["version"])
+        return 0
+
+    if args.command == "newest-test-ha":
+        if (ha := newest_test_ha()) is None:
+            print("No phcc release pins a Home Assistant version", file=sys.stderr)
+            return 1
+        print(ha)
+        return 0
 
     if args.command == "list":
         print("phcc       Home Assistant")

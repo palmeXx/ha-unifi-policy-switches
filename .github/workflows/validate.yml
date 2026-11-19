@@ -1,9 +1,10 @@
 name: Validate
 
 on:
-  # Tags are validated by the release workflow
+  # Other branches are validated by their pull request, tags by the release
+  # workflow
   push:
-    branches: ["**"]
+    branches: [main]
   pull_request:
   schedule:
     - cron: "0 0 * * *"

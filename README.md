@@ -188,7 +188,10 @@ publishes it.
 
    If you're unsure, ask in the pull request.
 5. Open the pull request against `main`. The checks `Release check`,
-   `HACS validation`, `Hassfest validation` and `pytest` have to pass.
+   `HACS validation`, `Hassfest validation`, `Test suite` and `Smoke test` have
+   to pass. The pipeline runs the same `make test` and `make smoke` as above,
+   on the newest Home Assistant version with a test suite release and on the
+   newest Home Assistant release.
 6. After the review, the maintainer merges the pull request, which creates the
    tag and the GitHub release automatically.
 
@@ -288,8 +291,8 @@ manually with the tag (Actions → Release → Run workflow). It then uses
 
 To enforce the check, protect `main` in the repository settings (Settings →
 Rules → Rulesets, or Branches): require a pull request before merging and the
-status checks `Release check`, `HACS validation`, `Hassfest validation` and
-`pytest`.
+status checks `Release check`, `HACS validation`, `Hassfest validation`,
+`Test suite` and `Smoke test`.
 
 ## Disclaimer
 

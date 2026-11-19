@@ -22,6 +22,9 @@ No changes to the integration itself.
 
 - `make test HA=<version>` and `make smoke HA=<version>` look up the matching
   test packages and aiounifi version themselves
+- The test pipeline runs `make test` on the newest Home Assistant version with
+  a test suite release and `make smoke` on the newest Home Assistant release,
+  instead of a fixed version
 
 ## [0.1.0] - 2026-11-19
 
