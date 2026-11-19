@@ -1,0 +1,111 @@
+name: Release
+
+# Creates a GitHub release after validating and testing the released commit:
+# - push to main: if no tag of the manifest version exists yet, the tag is
+#   created together with the release, so merging a pull request releases it
+# - push of a version tag, e.g. 0.2.0: has to match the manifest version
+# - manual run with an existing tag, e.g. for a tag pushed before this
+#   workflow existed, or to update the notes of a release
+# The release notes are the section of the version in CHANGELOG.md, followed by
+# the commits since the previous tag. Versions with a suffix after
+# major.minor.patch, like 0.2.0b1, become pre-releases.
+
+on:
+  push:
+    branches: [main]
+    tags:
+      - "[0-9]+.[0-9]+.[0-9]+*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing tag to create the release for, e.g. 0.1.0
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.prepare.outputs.tag }}
+      ref: ${{ steps.prepare.outputs.ref }}
+      release: ${{ steps.prepare.outputs.release }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - id: prepare
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
+        run: |
+          if [[ "$GITHUB_REF_TYPE" == "branch" && -z "$INPUT_TAG" ]]; then
+            tag=$(python3 scripts/release.py version --ref "$GITHUB_SHA")
+            ref=$GITHUB_SHA
+            if git rev-parse -q --verify "refs/tags/$tag" > /dev/null; then
+              echo "Tag $tag exists, nothing to release"
+              echo "release=false" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          else
+            tag=${INPUT_TAG:-$GITHUB_REF_NAME}
+            ref=$tag
+            version=$(python3 scripts/release.py version --ref "$tag")
+            if [[ "$version" != "$tag" ]]; then
+              echo "::error::Tag $tag doesn't match version $version in manifest.json"
+              exit 1
+            fi
+          fi
+          {
+            echo "tag=$tag"
+            echo "ref=$ref"
+            echo "release=true"
+          } >> "$GITHUB_OUTPUT"
+
+  validate:
+    needs: prepare
+    if: needs.prepare.outputs.release == 'true'
+    uses: ./.github/workflows/validate.yml
+    with:
+      ref: ${{ needs.prepare.outputs.ref }}
+
+  tests:
+    needs: prepare
+    if: needs.prepare.outputs.release == 'true'
+    uses: ./.github/workflows/tests.yml
+    with:
+      ref: ${{ needs.prepare.outputs.ref }}
+
+  release:
+    needs: [prepare, validate, tests]
+    runs-on: ubuntu-latest
+    concurrency: release-${{ needs.prepare.outputs.tag }}
+    permissions:
+      contents: write
+    env:
+      TAG: ${{ needs.prepare.outputs.tag }}
+      REF: ${{ needs.prepare.outputs.ref }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      # A manual run reads CHANGELOG.md of the branch it runs on, otherwise
+      # the one of the released commit
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Build release notes
+        run: python3 scripts/release.py notes --ref "$REF" --output "$RUNNER_TEMP/notes.md"
+      - name: Create or update release
+        run: |
+          options=(--title "$TAG" --notes-file "$RUNNER_TEMP/notes.md")
+          if [[ ! "$TAG" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            options+=(--prerelease)
+          fi
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            gh release edit "$TAG" "${options[@]}"
+          elif git rev-parse -q --verify "refs/tags/$TAG" > /dev/null; then
+            gh release create "$TAG" --verify-tag "${options[@]}"
+          else
+            # Creates the tag on the released commit
+            gh release create "$TAG" --target "$REF" "${options[@]}"
+          fi

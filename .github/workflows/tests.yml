@@ -1,9 +1,17 @@
 name: Tests
 
 on:
+  # Tags are validated by the release workflow
   push:
+    branches: ["**"]
   pull_request:
   workflow_dispatch:
+  workflow_call:
+    inputs:
+      ref:
+        description: Git ref to test, the triggering ref by default
+        type: string
+        default: ""
 
 permissions:
   contents: read
@@ -13,6 +21,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref }}
       - uses: actions/setup-python@v7
         with:
           python-version: "3.14"

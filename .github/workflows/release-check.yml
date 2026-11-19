@@ -1,0 +1,29 @@
+name: Release check
+
+# A pull request to main is the next release: the manifest version has to be
+# greater than on main, and CHANGELOG.md needs a section for it. Pull requests
+# labeled no-release skip the check and don't create a release when merged.
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+
+permissions:
+  contents: read
+
+jobs:
+  release-check:
+    name: Release check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Skipped by no-release label
+        if: contains(github.event.pull_request.labels.*.name, 'no-release')
+        run: echo "Labeled no-release, merging creates no release"
+      - uses: actions/checkout@v7
+        if: ${{ !contains(github.event.pull_request.labels.*.name, 'no-release') }}
+        with:
+          fetch-depth: 0
+      - name: Check version and changelog
+        if: ${{ !contains(github.event.pull_request.labels.*.name, 'no-release') }}
+        run: python3 scripts/release.py check --base "origin/$GITHUB_BASE_REF"
